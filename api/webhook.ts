@@ -41,32 +41,55 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       });
     }
 
-    // Verificar se o body tem a estrutura esperada do Pipedrive
-    const { event, data } = parsedBody;
-    if (!event || !data) {
-      console.error('Estrutura inválida:', parsedBody);
+    // Extrair os dados necessários
+    const { data } = parsedBody;
+    if (!data) {
+      console.error('Dados não encontrados:', parsedBody);
       return res.status(400).json({
         status: "error",
-        message: "O corpo da requisição deve conter 'event' e 'data'"
+        message: "Dados não encontrados no payload"
       });
     }
 
-    // Log detalhado dos dados recebidos
-    console.log('=== DADOS RECEBIDOS DO PIPEDRIVE ===');
-    console.log('Evento:', event);
-    console.log('Dados completos:', JSON.stringify(data, null, 2));
-    console.log('Estrutura dos dados:', Object.keys(data));
-    console.log('=====================================');
-
-    // Aqui você pode copiar os dados que aparecerem no log e me enviar
-    // para eu implementar o tratamento específico que você precisar
+    // Verificar se é do pipeline e stage corretos
+    const { pipeline_id, stage_id, title, value } = data;
     
-    // Retornar sucesso
-    return res.status(200).json({
-      status: "success",
-      message: "Webhook recebido com sucesso",
-      receivedData: parsedBody
-    });
+    console.log('Pipeline ID:', pipeline_id);
+    console.log('Stage ID:', stage_id);
+    
+    // Só processa se for do pipeline 4 e stage 20
+    if (pipeline_id === 4 && stage_id === 20) {
+      console.log('=== DADOS DO CONTRATO ===');
+      console.log('Título:', title);
+      console.log('Valor:', value);
+      console.log('========================');
+
+      // Aqui você pode adicionar o código para salvar no Supabase
+      // Por exemplo:
+      // await supabase.from('active_contracts').insert({
+      //   title: title,
+      //   value: value,
+      //   currency: data.currency,
+      //   created_at: new Date().toISOString(),
+      //   status: 'open'
+      // });
+
+      return res.status(200).json({
+        status: "success",
+        message: "Contrato recebido e processado com sucesso",
+        data: {
+          title,
+          value,
+          currency: data.currency
+        }
+      });
+    } else {
+      console.log('Ignorando webhook - Pipeline ou Stage não correspondem aos critérios');
+      return res.status(200).json({
+        status: "success",
+        message: "Webhook recebido mas ignorado - não atende aos critérios"
+      });
+    }
 
   } catch (error) {
     console.error('Erro no webhook:', error);
