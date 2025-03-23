@@ -1,6 +1,5 @@
 import { VercelRequest, VercelResponse } from '@vercel/node';
 import { supabase } from '../src/lib/supabase';
-import { WebhookEvent } from '../src/types/pipedrive';
 
 export default async function handler(
   req: VercelRequest,
@@ -11,55 +10,43 @@ export default async function handler(
   }
 
   try {
-    const webhookData = req.body as WebhookEvent;
+    const { event, data } = req.body;
 
     // Verificar se os dados necessários estão presentes
-    if (!webhookData || !webhookData.data) {
+    if (!data || !data.title || !data.value) {
       return res.status(400).json({ 
         status: "error",
-        message: "Invalid webhook data"
+        message: "Dados inválidos. É necessário enviar title e value"
       });
     }
-
-    // Extrair os dados do webhook
-    const { data } = webhookData;
-    const { id, stage_id, pipeline_id, title, value, customer_name, salesperson_name } = data;
 
     // Inserir o novo contrato na tabela de contratos ativos
     const { error } = await supabase
       .from('active_contracts')
-      .upsert({
-        id,
-        title,
-        customer_name: customer_name || 'Cliente via Webhook',
-        salesperson_name: salesperson_name || 'Integração',
-        value,
+      .insert({
+        title: data.title,
+        value: data.value,
         currency: 'BRL',
-        stage_id,
-        pipeline_id,
         created_at: new Date().toISOString(),
         status: 'open'
       });
 
-    if (error) throw error;
-
-    // Emitir evento em tempo real para todos os clientes
-    await supabase
-      .from('active_contracts')
-      .select('*')
-      .eq('id', id)
-      .single();
+    if (error) {
+      console.error('Erro ao inserir no Supabase:', error);
+      throw error;
+    }
 
     return res.status(200).json({
       status: "success",
-      message: "Contract added to queue"
+      message: "Contrato adicionado à fila",
+      receivedData: data
     });
 
   } catch (error) {
-    console.error('Error processing webhook:', error);
+    console.error('Erro ao processar webhook:', error);
     return res.status(500).json({
       status: "error",
-      message: "Internal server error"
+      message: "Erro interno do servidor"
     });
   }
 } 
