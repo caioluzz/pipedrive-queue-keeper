@@ -41,7 +41,7 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       });
     }
 
-    // Verificar se o body tem a estrutura esperada
+    // Verificar se o body tem a estrutura esperada do Pipedrive
     const { event, data } = parsedBody;
     if (!event || !data) {
       console.error('Estrutura inválida:', parsedBody);
@@ -51,17 +51,17 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       });
     }
 
-    // Verificar se os dados necessários estão presentes
-    const { title, value } = data;
-    if (!title || !value) {
-      console.error('Dados incompletos:', data);
-      return res.status(400).json({
-        status: "error",
-        message: "O objeto 'data' deve conter 'title' e 'value'"
-      });
-    }
+    // Log detalhado dos dados recebidos
+    console.log('=== DADOS RECEBIDOS DO PIPEDRIVE ===');
+    console.log('Evento:', event);
+    console.log('Dados completos:', JSON.stringify(data, null, 2));
+    console.log('Estrutura dos dados:', Object.keys(data));
+    console.log('=====================================');
 
-    // Primeiro, vamos apenas retornar os dados recebidos para teste
+    // Aqui você pode copiar os dados que aparecerem no log e me enviar
+    // para eu implementar o tratamento específico que você precisar
+    
+    // Retornar sucesso
     return res.status(200).json({
       status: "success",
       message: "Webhook recebido com sucesso",
