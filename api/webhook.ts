@@ -1,4 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { createClient } from '@supabase/supabase-js';
+
+// Criar cliente do Supabase
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Variáveis de ambiente do Supabase não configuradas');
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Middleware para garantir que o body está sendo parseado corretamente
 const parseBody = (req: VercelRequest) => {
@@ -52,7 +63,7 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
     }
 
     // Verificar se é do pipeline e stage corretos
-    const { pipeline_id, stage_id, title, value } = data;
+    const { pipeline_id, stage_id, title, value, currency } = data;
     
     console.log('Pipeline ID:', pipeline_id);
     console.log('Stage ID:', stage_id);
@@ -62,26 +73,34 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       console.log('=== DADOS DO CONTRATO ===');
       console.log('Título:', title);
       console.log('Valor:', value);
+      console.log('Moeda:', currency);
       console.log('========================');
 
-      // Aqui você pode adicionar o código para salvar no Supabase
-      // Por exemplo:
-      // await supabase.from('active_contracts').insert({
-      //   title: title,
-      //   value: value,
-      //   currency: data.currency,
-      //   created_at: new Date().toISOString(),
-      //   status: 'open'
-      // });
+      // Inserir o contrato no Supabase
+      const { data: insertedData, error } = await supabase
+        .from('active_contracts')
+        .insert({
+          title: title,
+          value: value,
+          currency: currency,
+          created_at: new Date().toISOString(),
+          status: 'open',
+          pipedrive_id: data.id // ID do negócio no Pipedrive
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Erro ao inserir no Supabase:', error);
+        throw error;
+      }
+
+      console.log('Contrato inserido com sucesso:', insertedData);
 
       return res.status(200).json({
         status: "success",
-        message: "Contrato recebido e processado com sucesso",
-        data: {
-          title,
-          value,
-          currency: data.currency
-        }
+        message: "Contrato recebido e salvo com sucesso",
+        data: insertedData
       });
     } else {
       console.log('Ignorando webhook - Pipeline ou Stage não correspondem aos critérios');
