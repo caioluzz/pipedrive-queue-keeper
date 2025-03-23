@@ -1,8 +1,8 @@
-
 import React from 'react';
 import ConcludedContracts from '@/components/ConcludedContracts';
 import { Toaster } from '@/components/ui/sonner';
 import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 const ConcludedContractsPage = () => {
   return (
@@ -13,11 +13,7 @@ const ConcludedContractsPage = () => {
         <ConcludedContracts />
       </main>
       
-      <footer className="border-t mt-12 py-6 bg-white">
-        <div className="container max-w-7xl mx-auto px-4 text-center text-sm text-gray-500">
-          &copy; {new Date().getFullYear()} Pipedrive Queue Keeper. Todos os direitos reservados.
-        </div>
-      </footer>
+      <Footer />
       
       <Toaster position="bottom-right" />
     </div>

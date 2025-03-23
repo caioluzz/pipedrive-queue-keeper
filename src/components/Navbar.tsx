@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useLogin } from '@/contexts/LoginContext';
 import { Button } from '@/components/ui/button';
@@ -6,7 +5,7 @@ import { LogOut, User } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
-const Navbar = ({ active }: { active: 'dashboard' | 'concluded' | 'settings' }) => {
+const Navbar = ({ active }: { active: 'dashboard' | 'concluded' | 'settings' | 'signed' }) => {
   const { currentUser, logout } = useLogin();
   const navigate = useNavigate();
 
