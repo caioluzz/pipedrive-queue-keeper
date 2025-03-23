@@ -1,5 +1,18 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
+// Middleware para garantir que o body está sendo parseado corretamente
+const parseBody = (req: VercelRequest) => {
+  if (typeof req.body === 'string') {
+    try {
+      return JSON.parse(req.body);
+    } catch (e) {
+      console.error('Erro ao parsear body:', e);
+      return null;
+    }
+  }
+  return req.body;
+};
+
 const handler = async (req: VercelRequest, res: VercelResponse) => {
   // Log inicial
   console.log('Webhook recebido');
@@ -10,20 +23,8 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
   console.log('Body type:', typeof req.body);
   console.log('Body raw:', req.body);
   
-  // Tentar parsear o body se for string
-  let parsedBody = req.body;
-  if (typeof req.body === 'string') {
-    try {
-      parsedBody = JSON.parse(req.body);
-    } catch (e) {
-      console.error('Erro ao parsear body:', e);
-      return res.status(400).json({
-        status: "error",
-        message: "O corpo da requisição não é um JSON válido"
-      });
-    }
-  }
-  
+  // Parsear o body
+  const parsedBody = parseBody(req);
   console.log('Body parsed:', JSON.stringify(parsedBody, null, 2));
 
   if (req.method !== 'POST') {
