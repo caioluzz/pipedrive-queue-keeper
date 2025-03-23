@@ -28,15 +28,9 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
   // Log inicial
   console.log('Webhook recebido');
   console.log('Método:', req.method);
-  console.log('Headers:', JSON.stringify(req.headers, null, 2));
-  
-  // Log detalhado do body
-  console.log('Body type:', typeof req.body);
-  console.log('Body raw:', req.body);
   
   // Parsear o body
   const parsedBody = parseBody(req);
-  console.log('Body parsed:', JSON.stringify(parsedBody, null, 2));
 
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
@@ -63,7 +57,7 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
     }
 
     // Verificar se é do pipeline e stage corretos
-    const { pipeline_id, stage_id, title, value, currency } = data;
+    const { pipeline_id, stage_id, title, value, currency, id: pipedrive_id } = data;
     
     console.log('Pipeline ID:', pipeline_id);
     console.log('Stage ID:', stage_id);
@@ -74,6 +68,7 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
       console.log('Título:', title);
       console.log('Valor:', value);
       console.log('Moeda:', currency);
+      console.log('ID Pipedrive:', pipedrive_id);
       console.log('========================');
 
       // Inserir o contrato no Supabase
@@ -85,7 +80,7 @@ const handler = async (req: VercelRequest, res: VercelResponse) => {
           currency: currency,
           created_at: new Date().toISOString(),
           status: 'open',
-          pipedrive_id: data.id // ID do negócio no Pipedrive
+          pipedrive_id: pipedrive_id
         })
         .select()
         .single();
