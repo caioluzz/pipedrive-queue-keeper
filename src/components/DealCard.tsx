@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Deal } from '@/types/pipedrive';
 import { Check, Trash2, User } from 'lucide-react';
@@ -20,7 +19,7 @@ import { Button } from '@/components/ui/button';
 
 interface DealCardProps {
   deal: Deal;
-  onComplete: (id: number) => void;
+  onComplete: (id: number, currentUser: string) => void;
   onDelete: (id: number) => void;
   isProcessing: boolean;
 }
@@ -53,13 +52,13 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onComplete, onDelete, isProce
       // Save back to localStorage
       localStorage.setItem('concluded_contracts', JSON.stringify(concludedContracts));
       
-      // Call the original onComplete function
-      onComplete(deal.id);
+      // Call the original onComplete function with currentUser
+      onComplete(deal.id, currentUser);
     } catch (error) {
       console.error('Failed to save concluded contract:', error);
       toast.error('Falha ao salvar contrato concluído');
       // Still try to mark as complete in the UI
-      onComplete(deal.id);
+      onComplete(deal.id, currentUser);
     }
   };
 

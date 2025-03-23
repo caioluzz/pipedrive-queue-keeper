@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, useEffect, ReactNode } from "react";
 
 type LoginContextType = {
@@ -10,7 +9,15 @@ type LoginContextType = {
 
 const LoginContext = createContext<LoginContextType | undefined>(undefined);
 
-export const LoginProvider = ({ children }: { children: ReactNode }) => {
+export const useLogin = () => {
+  const context = useContext(LoginContext);
+  if (context === undefined) {
+    throw new Error("useLogin deve ser usado dentro de um LoginProvider");
+  }
+  return context;
+};
+
+export const LoginProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<string | null>(null);
   
   useEffect(() => {
@@ -41,12 +48,4 @@ export const LoginProvider = ({ children }: { children: ReactNode }) => {
       {children}
     </LoginContext.Provider>
   );
-};
-
-export const useLogin = () => {
-  const context = useContext(LoginContext);
-  if (context === undefined) {
-    throw new Error("useLogin must be used within a LoginProvider");
-  }
-  return context;
 };

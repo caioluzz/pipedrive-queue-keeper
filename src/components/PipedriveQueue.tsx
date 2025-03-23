@@ -1,9 +1,9 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { Deal } from '@/types/pipedrive';
 import { fetchDealsByStage, markDealAsCompleted, removeDealFromQueue } from '@/services/pipedriveService';
+import { useLogin } from '@/contexts/LoginContext';
 import QueueHeader from './QueueHeader';
 import DealCard from './DealCard';
 import EmptyQueue from './EmptyQueue';
@@ -22,6 +22,7 @@ const PipedriveQueue: React.FC<PipedriveQueueProps> = ({
   description,
   refreshInterval = 60000 // Default to 1 minute
 }) => {
+  const { currentUser } = useLogin();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -84,11 +85,11 @@ const PipedriveQueue: React.FC<PipedriveQueueProps> = ({
   }, [fetchDeals, refreshInterval]);
   
   // Handle completing a deal
-  const handleCompleteDeal = async (dealId: number) => {
+  const handleCompleteDeal = async (dealId: number, currentUser: string) => {
     setProcessingDeals(prev => new Set(prev).add(dealId));
     
     try {
-      const success = await markDealAsCompleted(dealId);
+      const success = await markDealAsCompleted(dealId, currentUser);
       
       if (success) {
         // Remove the deal from the list with animation

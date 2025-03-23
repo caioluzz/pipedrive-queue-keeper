@@ -5,7 +5,11 @@ import { LogOut, User } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
-const Navbar = ({ active }: { active: 'dashboard' | 'concluded' | 'settings' | 'signed' }) => {
+type NavbarProps = {
+  active: 'dashboard' | 'concluded' | 'settings' | 'signed';
+};
+
+const Navbar: React.FC<NavbarProps> = ({ active }) => {
   const { currentUser, logout } = useLogin();
   const navigate = useNavigate();
 

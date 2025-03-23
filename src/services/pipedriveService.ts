@@ -1,6 +1,7 @@
-
 import { Deal, ApiResponse, WebhookEvent, WebhookResponse } from '../types/pipedrive';
 import { toast } from 'sonner';
+import { getActiveContracts, markContractAsCompleted, removeContractFromQueue, getCompletedContracts } from './contractService';
+import { supabase } from '@/lib/supabase';
 
 // Local storage keys
 export const LS_PIPEDRIVE_PIPELINE_ID = 'pipedrive_pipeline_id';
@@ -28,18 +29,11 @@ export const fetchDealsByStage = async (stageId?: number): Promise<Deal[]> => {
     const config = getConfig();
     const targetStageId = stageId || config.stageId;
     
-    // In production with Make or n8n, you would create a webhook that:
-    // 1. Handles authentication 
-    // 2. Gets deals from Pipedrive API
-    // 3. Returns them to your frontend
+    // Buscar contratos ativos do Supabase
+    const activeContracts = await getActiveContracts();
     
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    console.log(`Fetching deals for pipeline ${config.pipelineId}, stage ${targetStageId}`);
-    
-    // Return deals from our array instead of mocks
-    return DEALS.filter(deal => 
+    // Filtrar apenas os contratos do stage correto
+    return activeContracts.filter(deal => 
       deal.stage_id === targetStageId && 
       (deal.pipeline_id === undefined || deal.pipeline_id === config.pipelineId)
     );
@@ -51,43 +45,19 @@ export const fetchDealsByStage = async (stageId?: number): Promise<Deal[]> => {
 };
 
 // Mark a deal as completed
-export const markDealAsCompleted = async (dealId: number): Promise<boolean> => {
+export const markDealAsCompleted = async (dealId: number, currentUser: string): Promise<boolean> => {
   try {
-    const config = getConfig();
+    // Marcar como concluído usando o serviço de contratos
+    const success = await markContractAsCompleted(dealId, currentUser);
     
-    // Simulate network delay
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    console.log(`Marking deal ${dealId} as completed`);
-    
-    // Remove the deal from our array
-    const index = DEALS.findIndex(deal => deal.id === dealId);
-    if (index !== -1) {
-      DEALS.splice(index, 1);
+    if (success) {
+      // Use broadcast channel to notify other tabs/windows
+      const channel = new BroadcastChannel('pipedrive_queue_updates');
+      channel.postMessage({ type: 'DEALS_UPDATED' });
+      channel.close();
     }
     
-    // If webhook URL is configured, notify Pipedrive about the change
-    if (config.webhookUrl) {
-      await sendWebhookEvent({
-        event: 'deal.completed',
-        data: {
-          id: dealId,
-          title: "Deal completed via app",
-          value: 0,
-          stage_id: config.stageId,
-          pipeline_id: config.pipelineId
-        },
-        timestamp: new Date().toISOString(),
-        user: localStorage.getItem('currentUser') || 'unknown',
-      });
-    }
-    
-    // Use broadcast channel to notify other tabs/windows
-    const channel = new BroadcastChannel('pipedrive_queue_updates');
-    channel.postMessage({ type: 'DEALS_UPDATED' });
-    channel.close();
-    
-    return true;
+    return success;
   } catch (error) {
     console.error("Error marking deal as completed:", error);
     toast.error("Falha ao marcar contrato como concluído");
@@ -98,22 +68,17 @@ export const markDealAsCompleted = async (dealId: number): Promise<boolean> => {
 // Remove a deal from the queue (without changing its status in Pipedrive)
 export const removeDealFromQueue = async (dealId: number): Promise<boolean> => {
   try {
-    await new Promise(resolve => setTimeout(resolve, 500)); // Simulate network delay
+    // Remover da fila usando o serviço de contratos
+    const success = await removeContractFromQueue(dealId);
     
-    console.log(`Removing deal ${dealId} from queue`);
-    
-    // Remove the deal from our array
-    const index = DEALS.findIndex(deal => deal.id === dealId);
-    if (index !== -1) {
-      DEALS.splice(index, 1);
+    if (success) {
+      // Use broadcast channel to notify other tabs/windows
+      const channel = new BroadcastChannel('pipedrive_queue_updates');
+      channel.postMessage({ type: 'DEALS_UPDATED' });
+      channel.close();
     }
     
-    // Use broadcast channel to notify other tabs/windows
-    const channel = new BroadcastChannel('pipedrive_queue_updates');
-    channel.postMessage({ type: 'DEALS_UPDATED' });
-    channel.close();
-    
-    return true;
+    return success;
   } catch (error) {
     console.error("Error removing deal from queue:", error);
     toast.error("Falha ao remover contrato da fila");
@@ -124,19 +89,26 @@ export const removeDealFromQueue = async (dealId: number): Promise<boolean> => {
 // Fetch signed contracts within a date range
 export const fetchSignedContracts = async (startDate: Date, endDate: Date): Promise<Deal[]> => {
   try {
-    // Get completed contracts from localStorage instead of mocks
-    const completedContractsStr = localStorage.getItem('concluded_contracts');
-    let completedContracts: Deal[] = [];
+    // Buscar contratos concluídos do Supabase
+    const completedContracts = await getCompletedContracts(startDate, endDate);
     
-    if (completedContractsStr) {
-      completedContracts = JSON.parse(completedContractsStr);
-    }
-    
-    // Filter by date range
-    return completedContracts.filter(deal => {
-      const dealDate = new Date(deal.completed_at || deal.add_time);
-      return dealDate >= startDate && dealDate <= endDate;
-    });
+    // Converter o formato do Supabase para o formato Deal
+    return completedContracts.map(contract => ({
+      id: contract.id,
+      title: contract.title,
+      customer_name: contract.customer_name,
+      salesperson_name: contract.salesperson_name,
+      salesperson_id: 999,
+      value: contract.value,
+      currency: contract.currency,
+      add_time: contract.created_at,
+      status: "completed",
+      stage_id: 20,
+      stage_name: "Elaborar Contrato",
+      pipeline_id: 4,
+      completed_at: contract.completed_at,
+      completed_by: contract.completed_by
+    }));
   } catch (error) {
     console.error("Error fetching signed contracts:", error);
     toast.error("Falha ao buscar contratos assinados");
@@ -221,26 +193,19 @@ export const processWebhook = async (webhookData: WebhookEvent): Promise<Webhook
       console.log(`Nome do negocio: ${title}`);
       console.log(`Valor do negocio: R$ ${value}`);
       
-      // Adicionar o contrato à nossa array de deals
-      const newDeal: Deal = {
-        id,
-        title,
-        customer_name: "Cliente via Webhook",
-        salesperson_name: "Integração",
-        salesperson_id: 999,
-        value,
-        currency: "BRL",
-        add_time: new Date().toISOString(),
-        status: "open",
-        stage_id,
-        stage_name: "Elaborar Contrato",
-        pipeline_id
-      };
-      
-      // Adicionar ao array apenas se ainda não existir
-      if (!DEALS.some(deal => deal.id === id)) {
-        DEALS.push(newDeal);
-      }
+      // Inserir o contrato no Supabase
+      const { error } = await supabase
+        .from('active_contracts')
+        .insert({
+          title: title,
+          value: value,
+          currency: "BRL",
+          created_at: new Date().toISOString(),
+          status: "open",
+          pipedrive_id: id
+        });
+
+      if (error) throw error;
       
       // Notificar a interface sobre a chegada de um novo webhook
       const channel = new BroadcastChannel('pipedrive_queue_updates');
