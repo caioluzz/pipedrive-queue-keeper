@@ -43,7 +43,7 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onComplete, onDelete, isProce
       const dealWithTimestamp = {
         ...deal,
         completed_at: new Date().toISOString(),
-        completed_by: currentUser
+        completed_by: currentUser || 'Usuário não identificado'
       };
       
       // Add to the beginning of the array
@@ -53,12 +53,12 @@ const DealCard: React.FC<DealCardProps> = ({ deal, onComplete, onDelete, isProce
       localStorage.setItem('concluded_contracts', JSON.stringify(concludedContracts));
       
       // Call the original onComplete function with currentUser
-      onComplete(deal.id, currentUser);
+      onComplete(deal.id, currentUser || 'Usuário não identificado');
     } catch (error) {
       console.error('Failed to save concluded contract:', error);
       toast.error('Falha ao salvar contrato concluído');
       // Still try to mark as complete in the UI
-      onComplete(deal.id, currentUser);
+      onComplete(deal.id, currentUser || 'Usuário não identificado');
     }
   };
 

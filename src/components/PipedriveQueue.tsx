@@ -22,12 +22,12 @@ const PipedriveQueue: React.FC<PipedriveQueueProps> = ({
   description,
   refreshInterval = 60000 // Default to 1 minute
 }) => {
-  const { currentUser } = useLogin();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(new Date());
   const [processingDeals, setProcessingDeals] = useState<Set<number>>(new Set());
+  const { currentUser } = useLogin();
   
   // Setup browser polling for real-time updates across multiple tabs/users
   useEffect(() => {
